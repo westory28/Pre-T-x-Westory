@@ -99,7 +99,7 @@ const Home: React.FC = () => {
       </div>
       
       <footer className="text-center py-8 text-stone-600 text-sm border-t border-[#3e2723]/30">
-        © 2024 Pre-T x Westory Project. All rights reserved.
+        © 2026 용신중학교 역사교사 방재석. All rights reserved.
       </footer>
     </div>
   );
