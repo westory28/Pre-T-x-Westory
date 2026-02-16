@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { Leaf, PenTool, MessageCircle, RefreshCw, Loader2, BookOpen, Send, AlertTriangle } from 'lucide-react';
-// [수정됨] 안정적인 라이브러리로 교체
+// [중요] 여기가 @google/genai가 아니라 @google/generative-ai 여야만 합니다!
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // ----------------------------------------------------------------------
@@ -173,7 +173,7 @@ const Week4: React.FC = () => {
     <Layout title="Week 4: 인간과 자연의 역사">
       <div className="flex-1 flex flex-col items-center justify-center p-4 bg-stone-900 relative min-h-[calc(100vh-64px)] font-sans">
         
-        {/* 배경 효과 (초록색 테마) */}
+        {/* 배경 효과 */}
         <div className="absolute inset-0 pointer-events-none">
            <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-900/10 rounded-full blur-[100px]"></div>
            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-stone-700/10 rounded-full blur-[100px]"></div>
@@ -219,7 +219,6 @@ const Week4: React.FC = () => {
         {/* Step 3: 사례 보기 및 글쓰기 */}
         {(step === 'view_case' || step === 'writing') && historyCase && (
           <div className="w-full max-w-2xl bg-[#1c1917] border border-stone-800 rounded-xl shadow-2xl overflow-hidden z-10 flex flex-col animate-fade-in">
-            {/* 헤더 */}
             <div className="bg-[#292524] p-6 border-b border-stone-800">
               <div className="flex items-center gap-2 mb-2">
                 <span className="px-2 py-1 bg-emerald-900/50 text-emerald-400 text-xs font-bold rounded border border-emerald-800">생태환경사</span>
@@ -228,7 +227,6 @@ const Week4: React.FC = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-[#e7e5e4]">{historyCase.topic}</h2>
             </div>
 
-            {/* 본문 내용 */}
             <div className="p-6 md:p-8 space-y-6 bg-gradient-to-b from-[#1c1917] to-[#151312]">
               <div className="prose prose-invert max-w-none">
                 <p className="text-lg text-stone-300 leading-relaxed whitespace-pre-wrap">
@@ -281,8 +279,6 @@ const Week4: React.FC = () => {
         {/* Step 4: 피드백 결과 */}
         {step === 'feedback' && feedback && (
           <div className="w-full max-w-3xl z-10 animate-fade-in space-y-6">
-            
-            {/* 선생님 피드백 카드 */}
             <div className="bg-[#292524] border-2 border-emerald-800/50 rounded-xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-4 opacity-10">
                  <Leaf className="w-32 h-32 text-emerald-500" />
@@ -313,7 +309,6 @@ const Week4: React.FC = () => {
                </div>
             </div>
 
-            {/* 하단 버튼 */}
             <div className="flex justify-center gap-4">
               <button 
                 onClick={() => { setStep('view_case'); setFeedback(null); }}
@@ -330,7 +325,6 @@ const Week4: React.FC = () => {
             </div>
           </div>
         )}
-
       </div>
     </Layout>
   );
