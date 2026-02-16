@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Map, Scroll, Award, ArrowRight, Grid3X3, Newspaper } from 'lucide-react';
+import { BookOpen, Grid3X3, Newspaper, Leaf, ArrowRight } from 'lucide-react';
 
 const assignments = [
   {
@@ -10,7 +10,7 @@ const assignments = [
     icon: <BookOpen className="w-8 h-8" />,
     path: "/week1",
     status: "Completed",
-    color: "bg-amber-900"
+    color: "hover:border-amber-600 hover:shadow-amber-900/20"
   },
   {
     id: 2,
@@ -19,7 +19,7 @@ const assignments = [
     icon: <Grid3X3 className="w-8 h-8" />,
     path: "/week2",
     status: "Completed",
-    color: "bg-stone-800"
+    color: "hover:border-orange-600 hover:shadow-orange-900/20"
   },
   {
     id: 3,
@@ -28,16 +28,16 @@ const assignments = [
     icon: <Newspaper className="w-8 h-8" />,
     path: "/week3",
     status: "Completed",
-    color: "bg-stone-800"
+    color: "hover:border-yellow-600 hover:shadow-yellow-900/20"
   },
   {
     id: 4,
-    title: "Week 4: 명예의 전당",
-    description: "Pre-T x Westory 여정의 마침표",
-    icon: <Award className="w-8 h-8" />,
+    title: "Week 4: 생태환경사",
+    description: "역사 속 인간과 자연의 관계를 탐구하는 글쓰기",
+    icon: <Leaf className="w-8 h-8" />,
     path: "/week4",
-    status: "Pending",
-    color: "bg-stone-800"
+    status: "New",
+    color: "hover:border-emerald-500 hover:shadow-emerald-900/20"
   }
 ];
 
@@ -65,23 +65,31 @@ const Home: React.FC = () => {
             <Link 
               key={item.id} 
               to={item.path}
-              className={`group relative overflow-hidden rounded-2xl border border-[#3e2723] p-8 hover:border-amber-600 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-900/20 hover:-translate-y-1 ${item.color}`}
+              className={`group relative overflow-hidden rounded-2xl border border-[#3e2723] bg-[#222] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${item.color}`}
             >
               <div className="relative z-10 flex flex-col h-full">
                 <div className="flex items-start justify-between mb-6">
-                  <div className="p-3 bg-[#2c2c2c] rounded-lg text-amber-500 group-hover:text-amber-400 transition-colors">
+                  <div className={`p-3 bg-[#2c2c2c] rounded-lg transition-colors ${
+                    item.id === 4 ? 'text-emerald-500 group-hover:text-emerald-400' : 'text-amber-500 group-hover:text-amber-400'
+                  }`}>
                     {item.icon}
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full border ${item.status === 'Completed' ? 'border-amber-600 text-amber-500 bg-amber-900/30' : 'border-stone-600 text-stone-500'}`}>
+                  <span className={`text-xs px-3 py-1 rounded-full border ${
+                    item.status === 'New' 
+                      ? 'border-emerald-600 text-emerald-500 bg-emerald-900/30' 
+                      : 'border-amber-600 text-amber-500 bg-amber-900/30'
+                  }`}>
                     {item.status}
                   </span>
                 </div>
                 
                 <h3 className="text-2xl font-bold text-[#f4e4bc] mb-2">{item.title}</h3>
-                <p className="text-stone-400 mb-6 flex-grow">{item.description}</p>
+                <p className="text-stone-400 mb-6 flex-grow leading-relaxed">{item.description}</p>
                 
-                <div className="flex items-center text-amber-600 font-semibold group-hover:gap-2 transition-all">
-                  <span>프로젝트 보기</span>
+                <div className={`flex items-center font-semibold transition-all group-hover:gap-2 ${
+                   item.id === 4 ? 'text-emerald-500' : 'text-amber-600'
+                }`}>
+                  <span>프로젝트 시작하기</span>
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </div>
               </div>
@@ -90,7 +98,7 @@ const Home: React.FC = () => {
         </div>
       </div>
       
-      <footer className="text-center py-8 text-stone-600 text-sm">
+      <footer className="text-center py-8 text-stone-600 text-sm border-t border-[#3e2723]/30">
         © 2024 Pre-T x Westory Project. All rights reserved.
       </footer>
     </div>
