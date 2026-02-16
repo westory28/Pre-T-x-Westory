@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { Newspaper, ChevronRight, ChevronLeft, ExternalLink, Loader2, Share2, RefreshCw, AlertTriangle } from 'lucide-react';
-// 브라우저 친화적인 안정 버전 SDK 사용
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 interface NewsItem {
   title: string;
@@ -22,25 +21,14 @@ const Week3: React.FC = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // 컴포넌트 마운트 시 API 키 존재 여부 체크 (흰 화면 방지용)
+  // 컴포넌트 마운트 시 API 키 체크
   useEffect(() => {
-    const apiKey = getApiKey();
+    // 안전하게 window.process 접근
+    const apiKey = (window as any).process?.env?.API_KEY;
     if (!apiKey) {
-      setError("API Key가 없습니다. .env 파일을 확인해주세요.");
+      setError("API Key가 설정되지 않았습니다. .env 파일 또는 설정을 확인해주세요.");
     }
   }, []);
-
-  // 환경 변수 가져오기 헬퍼 함수 (Vite, Next.js, CRA 모두 대응)
-  const getApiKey = () => {
-    // 1. Vite
-    if (import.meta.env?.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
-    // 2. Create React App
-    if (process.env?.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY;
-    // 3. Next.js or Standard Node
-    if (process.env?.API_KEY) return process.env.API_KEY;
-    // 4. Fallback for some window injections
-    return (window as any).process?.env?.API_KEY;
-  };
 
   const fetchNews = async () => {
     setLoading(true);
@@ -48,18 +36,13 @@ const Week3: React.FC = () => {
     setActiveIndex(0);
 
     try {
-      const apiKey = getApiKey();
+      // 1. API Key 가져오기 (Polyfill 된 window.process 사용)
+      const apiKey = (window as any).process?.env?.API_KEY;
       if (!apiKey) throw new Error("API Key를 찾을 수 없습니다.");
 
-      // 1. 모델 초기화 (안정적인 gemini-2.0-flash 사용)
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash", 
-        // 구글 검색 도구 (Grounding)
-        tools: [{ googleSearch: {} } as any], 
-      });
+      // 2. 새로운 SDK(@google/genai) 초기화
+      const ai = new GoogleGenAI({ apiKey: apiKey });
 
-      // 2. 프롬프트: 네이버 뉴스 강제 검색
       const prompt = `
         You are a history teacher's assistant.
         Perform a Google Search using exactly this query: "역사 고고학 문화유산 발굴 site:n.news.naver.com"
@@ -70,7 +53,7 @@ const Week3: React.FC = () => {
         1. Summarize the content in Korean (keep it interesting for students).
         2. Create a '3줄 요약' (3-line summary) at the end of the content.
         
-        Output valid JSON only:
+        Output valid JSON only matching this structure:
         {
           "news": [
             {
@@ -84,11 +67,20 @@ const Week3: React.FC = () => {
         }
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      // 3. 모델 호출 (gemini-2.0-flash-exp 사용)
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash-exp",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
 
-      // 3. JSON 파싱 안전 장치
+      const text = response.text;
+      
+      if (!text) throw new Error("AI 응답이 비어있습니다.");
+
+      // 4. JSON 파싱
       let cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       const firstBrace = cleanedText.indexOf('{');
       const lastBrace = cleanedText.lastIndexOf('}');
@@ -99,7 +91,6 @@ const Week3: React.FC = () => {
 
       const parsedData: NewsData = JSON.parse(cleanedText);
 
-      // 데이터 검증
       if (!parsedData.news || parsedData.news.length === 0) {
         throw new Error("네이버 뉴스에서 기사를 찾지 못했습니다.");
       }
@@ -108,7 +99,9 @@ const Week3: React.FC = () => {
 
     } catch (err: any) {
       console.error("Fetch Error:", err);
-      setError(err.message || "뉴스를 불러오는 데 실패했습니다.");
+      let msg = err.message || "뉴스를 불러오는 데 실패했습니다.";
+      if (msg.includes("404")) msg = "모델을 찾을 수 없습니다 (404).";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -127,11 +120,9 @@ const Week3: React.FC = () => {
     }
   };
 
-  // 렌더링 헬퍼
   const renderCardContent = () => {
     if (!newsData) return null;
 
-    // 종합 요약 카드
     if (activeIndex === newsData.news.length) {
       return (
         <div className="flex flex-col h-full justify-between p-8 text-center bg-[#3e2723] text-[#d7ccc8] rounded-xl border-4 border-[#5d4037] shadow-2xl animate-fade-in">
@@ -151,7 +142,6 @@ const Week3: React.FC = () => {
       );
     }
 
-    // 개별 뉴스 카드
     const item = newsData.news[activeIndex];
     if (!item) return null;
 
@@ -186,22 +176,19 @@ const Week3: React.FC = () => {
     <Layout title="Week 3: 역사 뉴스룸">
       <div className="flex-1 flex flex-col items-center justify-center p-4 bg-stone-900 relative overflow-hidden min-h-[calc(100vh-64px)]">
         
-        {/* 배경 */}
         <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-amber-900/10 rounded-full blur-[100px]"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-stone-700/10 rounded-full blur-[100px]"></div>
         </div>
 
-        {/* 에러 메시지 (흰 화면 대신 에러 표시) */}
         {error && !loading && !newsData && (
           <div className="z-10 p-6 bg-red-900/20 border border-red-900/50 rounded-lg max-w-md text-center">
             <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-4" />
-            <h3 className="text-red-400 font-bold mb-2">설정 오류</h3>
+            <h3 className="text-red-400 font-bold mb-2">오류 발생</h3>
             <p className="text-red-300 text-sm">{error}</p>
           </div>
         )}
 
-        {/* 초기 화면 */}
         {!newsData && !loading && !error && (
           <div className="text-center z-10 max-w-lg animate-fade-in-up">
             <div className="w-24 h-24 bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-8 border-4 border-stone-700 shadow-xl">
@@ -221,7 +208,6 @@ const Week3: React.FC = () => {
           </div>
         )}
 
-        {/* 로딩 */}
         {loading && (
           <div className="text-center z-10">
             <Loader2 className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-6" />
@@ -230,7 +216,6 @@ const Week3: React.FC = () => {
           </div>
         )}
 
-        {/* 결과 카드 + 네비게이션 */}
         {newsData && (
           <div className="w-full max-w-5xl h-[70vh] min-h-[500px] flex items-center justify-center gap-4 md:gap-8 z-10 relative">
              <div className="shrink-0 z-20">
