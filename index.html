@@ -3,38 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pre-T x Westory</title>
+    <title>Pre-T x Westory: 생태환경사</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap');
+      
       body {
         font-family: 'Nanum Myeongjo', serif;
         background-color: #1c1917; /* stone-900 */
         color: #d7ccc8;
       }
+
+      /* 4주차 테마: 드래그 색상 (자연의 느낌) */
+      ::selection {
+        background-color: #10b981; /* emerald-500 */
+        color: #ffffff;
+      }
+
       /* Custom Scrollbar */
       .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 8px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(0, 0, 0, 0.1);
+          background: rgba(0, 0, 0, 0.2);
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #5d4037;
-          border-radius: 3px;
+          border-radius: 4px;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #8d6e63;
       }
     </style>
+    
     <script>
-      // 브라우저 환경에서 process.env 에러 방지용 폴리필
+      // 4주차 AI 피드백 기능을 위한 환경 변수 안전 장치
       window.process = window.process || { 
         env: { 
-          NODE_ENV: 'development'
-        }
+          NODE_ENV: 'development' 
+        } 
       };
     </script>
+    
     <script type="importmap">
     {
       "imports": {
