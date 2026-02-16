@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { Newspaper, ChevronRight, ChevronLeft, ExternalLink, Loader2, Share2, RefreshCw } from 'lucide-react';
-// 변경점 1: 안정적인 공식 SDK 임포트
+// 안정적인 공식 SDK 사용
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface NewsItem {
@@ -28,54 +28,82 @@ const Week3: React.FC = () => {
     setActiveIndex(0);
 
     try {
-      // 변경점 2: Vite 등 최신 프론트엔드 환경에 맞는 환경변수 호출 (없을 경우를 대비한 방어 코드)
+      // 1. API Key 안전하게 가져오기 (Vite, CRA, Next.js 환경 대응)
       const apiKey = import.meta.env?.VITE_API_KEY || process.env.REACT_APP_API_KEY || (window as any).process?.env?.API_KEY;
 
       if (!apiKey) {
-        throw new Error("API Key를 찾을 수 없습니다. .env 파일을 확인해주세요.");
+        throw new Error("API Key가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
       }
 
-      // 변경점 3: 모델 초기화 및 유효한 모델명(gemini-2.0-flash) 사용
+      // 2. 모델 초기화 (안정적인 gemini-2.0-flash 사용)
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash", // 최신 안정화 모델
-        // 검색 도구 설정 (Google Search Grounding)
+        model: "gemini-2.0-flash",
+        // 구글 검색 도구 활성화 (Grounding)
         tools: [{ googleSearch: {} } as any], 
       });
 
+      // 3. 프롬프트 강화: 검색 쿼리에 'site:n.news.naver.com'을 명시적으로 포함하도록 유도
       const prompt = `
-        Find 4 recent (within last 3 months) interesting news articles related to history, archaeology, or cultural heritage, focusing on Korea or major global discoveries.
+        You are a history teacher's assistant.
+        Perform a Google Search using exactly this query: "역사 고고학 문화유산 발굴 site:n.news.naver.com"
         
-        STRICTLY return ONLY a JSON object. No markdown formatting, no code blocks.
-        Structure:
+        From the search results, select 4 distinct and interesting articles from 'n.news.naver.com' (Naver News).
+        
+        For each article:
+        1. Summarize the content in Korean (keep it interesting for students).
+        2. Create a '3줄 요약' (3-line summary) at the end of the content.
+        
+        Strictly output ONLY a valid JSON object matching this structure:
         {
           "news": [
             {
-              "title": "Korean Headline",
-              "content": "Korean Summary (2-3 sentences)",
-              "source": "Source Name",
-              "url": "Source URL"
+              "title": "Title of the article",
+              "content": "Summary content... \\n\\n[3줄 요약]\\n1. First point\\n2. Second point\\n3. Third point",
+              "source": "Naver News (Press Name)",
+              "url": "Full URL starting with https://n.news.naver.com"
             }
           ],
-          "summary": "Overall trend analysis in Korean"
+          "summary": "A brief analysis of these 4 news items in Korean."
         }
+        
+        Do not include markdown code blocks like \`\`\`json. Just the raw JSON.
       `;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
-
-      // 변경점 4: JSON 파싱 강화
-      // 마크다운 코드 블록 제거 및 공백 제거
-      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       
+      console.log("Raw AI Response:", text); // 디버깅용 로그
+
+      // 4. JSON 파싱 안전장치 (마크다운 제거 및 JSON 추출)
+      let cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      // 혹시라도 앞뒤에 불필요한 텍스트가 붙었을 경우를 대비해 첫 '{'와 마지막 '}' 사이만 추출
+      const firstBrace = cleanedText.indexOf('{');
+      const lastBrace = cleanedText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanedText = cleanedText.substring(firstBrace, lastBrace + 1);
+      }
+
       const parsedData: NewsData = JSON.parse(cleanedText);
+      
+      // 데이터 유효성 검사 (빈 배열이거나 뉴스가 0개인 경우 에러 처리)
+      if (!parsedData.news || parsedData.news.length === 0) {
+        throw new Error("네이버 뉴스에서 관련 기사를 찾지 못했습니다. 잠시 후 다시 시도해주세요.");
+      }
+
       setNewsData(parsedData);
 
     } catch (err: any) {
       console.error("Fetch Error:", err);
-      // 사용자에게 더 친절한 에러 메시지 표시
-      setError(err.message || "뉴스를 가져오는 중 문제가 발생했습니다.");
+      let errorMsg = "뉴스를 불러오는 중 오류가 발생했습니다.";
+      
+      if (err.message.includes("API Key")) errorMsg = "API Key가 없습니다. 설정을 확인해주세요.";
+      else if (err.message.includes("JSON")) errorMsg = "데이터를 분석하는 데 실패했습니다. 다시 시도해주세요.";
+      else if (err.message.includes("SAFETY")) errorMsg = "안전 필터에 의해 차단되었습니다.";
+      
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -119,34 +147,41 @@ const Week3: React.FC = () => {
 
     // 뉴스 카드
     const item = newsData.news[activeIndex];
-    // 방어 코드: item이 없을 경우 렌더링 하지 않음
-    if (!item) return null; 
+    if (!item) return null;
 
     return (
       <div className="flex flex-col h-full bg-[#1a1a1a] rounded-xl overflow-hidden border border-[#3e2723] shadow-2xl relative animate-fade-in">
+        {/* 헤더 */}
         <div className="bg-[#2c2c2c] p-4 flex justify-between items-center border-b border-[#3e2723]">
           <span className="text-xs font-bold text-amber-600 tracking-widest">NEWS FLASH #{activeIndex + 1}</span>
-          <span className="text-xs text-stone-500 truncate max-w-[150px]">{item.source}</span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <span className="text-xs text-stone-400 truncate max-w-[120px]">네이버 뉴스</span>
+          </div>
         </div>
 
-        <div className="flex-1 p-8 flex flex-col justify-center relative">
-           <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        {/* 본문 (스크롤 가능) */}
+        <div className="flex-1 p-6 md:p-8 flex flex-col relative overflow-y-auto custom-scrollbar">
+           <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
            
-           <h3 className="text-2xl md:text-3xl font-bold text-[#f4e4bc] mb-6 leading-tight z-10">
+           <h3 className="text-xl md:text-2xl font-bold text-[#f4e4bc] mb-4 leading-snug z-10 sticky top-0 bg-[#1a1a1a]/95 py-2">
              {item.title}
            </h3>
-           <div className="w-12 h-1 bg-amber-700 mb-6 z-10"></div>
-           <p className="text-lg text-stone-300 leading-relaxed z-10">
+           <div className="w-12 h-1 bg-amber-700 mb-4 z-10"></div>
+           
+           {/* 내용 줄바꿈 처리 */}
+           <div className="text-base md:text-lg text-stone-300 leading-relaxed z-10 whitespace-pre-wrap pb-4">
              {item.content}
-           </p>
+           </div>
         </div>
 
-        <div className="bg-[#2c2c2c] p-4 border-t border-[#3e2723] flex justify-between items-center">
+        {/* 푸터 */}
+        <div className="bg-[#2c2c2c] p-4 border-t border-[#3e2723] flex justify-between items-center z-20">
           <a 
             href={item.url} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-amber-600 hover:text-amber-500 transition-colors"
+            className="flex items-center gap-2 text-sm text-amber-600 hover:text-amber-500 transition-colors font-medium"
           >
             기사 원문 보기 <ExternalLink className="w-3 h-3" />
           </a>
@@ -168,7 +203,6 @@ const Week3: React.FC = () => {
             <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-stone-700/10 rounded-full blur-[100px]"></div>
         </div>
 
-        {/* 초기 화면 (데이터 없고, 로딩 아닐 때) */}
         {!newsData && !loading && (
           <div className="text-center z-10 max-w-lg animate-fade-in-up">
             <div className="w-24 h-24 bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-8 border-4 border-stone-700 shadow-xl">
@@ -176,8 +210,8 @@ const Week3: React.FC = () => {
             </div>
             <h2 className="text-3xl font-bold text-[#f4e4bc] mb-4">역사의 기록을 찾아서</h2>
             <p className="text-stone-400 mb-8 leading-relaxed">
-              AI가 전 세계의 최신 역사 및 고고학 뉴스를 검색하여<br/>
-              가장 흥미로운 소식을 카드 뉴스로 정리해드립니다.
+              AI가 <span className="text-green-500 font-bold">네이버 뉴스</span>를 검색하여<br/>
+              가장 흥미로운 역사/고고학 소식을 카드 뉴스로 정리해드립니다.
             </p>
             {error && (
               <div className="mb-6 p-4 bg-red-900/20 border border-red-900/50 rounded text-red-400 text-sm">
@@ -194,23 +228,20 @@ const Week3: React.FC = () => {
           </div>
         )}
 
-        {/* 로딩 화면 */}
         {loading && (
           <div className="text-center z-10">
             <Loader2 className="w-16 h-16 text-amber-600 animate-spin mx-auto mb-6" />
-            <h3 className="text-xl text-[#f4e4bc] animate-pulse">고대 문헌을 분석 중입니다...</h3>
-            <p className="text-sm text-stone-500 mt-2">최신 발굴 소식과 연구 자료를 수집하고 있습니다.</p>
+            <h3 className="text-xl text-[#f4e4bc] animate-pulse">사료를 수집 중입니다...</h3>
+            <p className="text-sm text-stone-500 mt-2">네이버 뉴스 서버와 통신하고 있습니다.</p>
           </div>
         )}
 
-        {/* 결과 화면 (카드) */}
         {newsData && (
-          <div className="w-full max-w-md md:max-w-lg h-[600px] flex flex-col z-10 relative">
+          <div className="w-full max-w-md md:max-w-lg h-[650px] flex flex-col z-10 relative">
             <div className="flex-1 w-full relative perspective-[1000px]">
               {renderCardContent()}
             </div>
 
-            {/* 네비게이션 */}
             <div className="flex justify-between items-center mt-8 px-4">
                <button 
                  onClick={prevCard} 
