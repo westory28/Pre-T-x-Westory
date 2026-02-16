@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { Newspaper, ChevronRight, ChevronLeft, ExternalLink, Loader2, Share2, RefreshCw } from 'lucide-react';
-// 안정적인 공식 SDK 사용
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 interface NewsItem {
   title: string;
@@ -28,22 +27,10 @@ const Week3: React.FC = () => {
     setActiveIndex(0);
 
     try {
-      // 1. API Key 안전하게 가져오기 (Vite, CRA, Next.js 환경 대응)
-      const apiKey = import.meta.env?.VITE_API_KEY || process.env.REACT_APP_API_KEY || (window as any).process?.env?.API_KEY;
+      // API Key handling: must be obtained exclusively from process.env.API_KEY
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-      if (!apiKey) {
-        throw new Error("API Key가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
-      }
-
-      // 2. 모델 초기화 (안정적인 gemini-2.0-flash 사용)
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash",
-        // 구글 검색 도구 활성화 (Grounding)
-        tools: [{ googleSearch: {} } as any], 
-      });
-
-      // 3. 프롬프트 강화: 검색 쿼리에 'site:n.news.naver.com'을 명시적으로 포함하도록 유도
+      // Prompt logic
       const prompt = `
         You are a history teacher's assistant.
         Perform a Google Search using exactly this query: "역사 고고학 문화유산 발굴 site:n.news.naver.com"
@@ -70,16 +57,26 @@ const Week3: React.FC = () => {
         Do not include markdown code blocks like \`\`\`json. Just the raw JSON.
       `;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      console.log("Raw AI Response:", text); // 디버깅용 로그
+      // New SDK usage with gemini-3-flash-preview and googleSearch tool
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+        },
+      });
 
-      // 4. JSON 파싱 안전장치 (마크다운 제거 및 JSON 추출)
+      const text = response.text;
+      
+      console.log("Raw AI Response:", text);
+
+      if (!text) {
+          throw new Error("No response text received from AI.");
+      }
+
+      // JSON parsing safe-guard
       let cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      // 혹시라도 앞뒤에 불필요한 텍스트가 붙었을 경우를 대비해 첫 '{'와 마지막 '}' 사이만 추출
       const firstBrace = cleanedText.indexOf('{');
       const lastBrace = cleanedText.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1) {
@@ -88,7 +85,6 @@ const Week3: React.FC = () => {
 
       const parsedData: NewsData = JSON.parse(cleanedText);
       
-      // 데이터 유효성 검사 (빈 배열이거나 뉴스가 0개인 경우 에러 처리)
       if (!parsedData.news || parsedData.news.length === 0) {
         throw new Error("네이버 뉴스에서 관련 기사를 찾지 못했습니다. 잠시 후 다시 시도해주세요.");
       }
@@ -99,9 +95,9 @@ const Week3: React.FC = () => {
       console.error("Fetch Error:", err);
       let errorMsg = "뉴스를 불러오는 중 오류가 발생했습니다.";
       
-      if (err.message.includes("API Key")) errorMsg = "API Key가 없습니다. 설정을 확인해주세요.";
-      else if (err.message.includes("JSON")) errorMsg = "데이터를 분석하는 데 실패했습니다. 다시 시도해주세요.";
-      else if (err.message.includes("SAFETY")) errorMsg = "안전 필터에 의해 차단되었습니다.";
+      if (err.message?.includes("API Key")) errorMsg = "API Key가 없습니다. 설정을 확인해주세요.";
+      else if (err.message?.includes("JSON")) errorMsg = "데이터를 분석하는 데 실패했습니다. 다시 시도해주세요.";
+      else if (err.message?.includes("SAFETY")) errorMsg = "안전 필터에 의해 차단되었습니다.";
       
       setError(errorMsg);
     } finally {
@@ -134,9 +130,11 @@ const Week3: React.FC = () => {
               <RefreshCw className="w-12 h-12 text-amber-500" />
             </div>
             <h2 className="text-3xl font-bold mb-6 text-[#f4e4bc]">금주의 역사 트렌드</h2>
-            <p className="text-lg leading-relaxed text-[#d7ccc8]/90 whitespace-pre-wrap">
-              {newsData.summary}
-            </p>
+            <div className="flex-1 overflow-y-auto custom-scrollbar w-full">
+              <p className="text-lg leading-relaxed text-[#d7ccc8]/90 whitespace-pre-wrap text-left md:text-center">
+                {newsData.summary}
+              </p>
+            </div>
           </div>
           <div className="mt-8 pt-6 border-t border-[#5d4037]">
             <p className="text-sm text-stone-500">Pre-T x Westory Newsroom</p>
@@ -152,7 +150,7 @@ const Week3: React.FC = () => {
     return (
       <div className="flex flex-col h-full bg-[#1a1a1a] rounded-xl overflow-hidden border border-[#3e2723] shadow-2xl relative animate-fade-in">
         {/* 헤더 */}
-        <div className="bg-[#2c2c2c] p-4 flex justify-between items-center border-b border-[#3e2723]">
+        <div className="bg-[#2c2c2c] p-4 flex justify-between items-center border-b border-[#3e2723] shrink-0">
           <span className="text-xs font-bold text-amber-600 tracking-widest">NEWS FLASH #{activeIndex + 1}</span>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
@@ -160,14 +158,14 @@ const Week3: React.FC = () => {
           </div>
         </div>
 
-        {/* 본문 (스크롤 가능) */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col relative overflow-y-auto custom-scrollbar">
-           <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
+        {/* 본문 (스크롤 가능 영역) */}
+        <div className="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar relative flex flex-col min-h-0">
+           <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none fixed-bg"></div>
            
            <h3 className="text-xl md:text-2xl font-bold text-[#f4e4bc] mb-4 leading-snug z-10 sticky top-0 bg-[#1a1a1a]/95 py-2">
              {item.title}
            </h3>
-           <div className="w-12 h-1 bg-amber-700 mb-4 z-10"></div>
+           <div className="w-12 h-1 bg-amber-700 mb-4 z-10 shrink-0"></div>
            
            {/* 내용 줄바꿈 처리 */}
            <div className="text-base md:text-lg text-stone-300 leading-relaxed z-10 whitespace-pre-wrap pb-4">
@@ -176,7 +174,7 @@ const Week3: React.FC = () => {
         </div>
 
         {/* 푸터 */}
-        <div className="bg-[#2c2c2c] p-4 border-t border-[#3e2723] flex justify-between items-center z-20">
+        <div className="bg-[#2c2c2c] p-4 border-t border-[#3e2723] flex justify-between items-center z-20 shrink-0">
           <a 
             href={item.url} 
             target="_blank" 
@@ -237,22 +235,26 @@ const Week3: React.FC = () => {
         )}
 
         {newsData && (
-          <div className="w-full max-w-md md:max-w-lg h-[650px] flex flex-col z-10 relative">
-            <div className="flex-1 w-full relative perspective-[1000px]">
-              {renderCardContent()}
-            </div>
-
-            <div className="flex justify-between items-center mt-8 px-4">
-               <button 
+          <div className="w-full max-w-5xl h-[70vh] min-h-[500px] flex items-center justify-center gap-4 md:gap-8 z-10 relative">
+            
+            {/* 왼쪽 버튼 (카드 밖으로 이동) */}
+            <div className="shrink-0 z-20">
+              <button 
                  onClick={prevCard} 
                  disabled={activeIndex === 0}
-                 className={`p-3 rounded-full border border-stone-600 transition-all ${activeIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-stone-800 text-[#f4e4bc]'}`}
+                 className={`p-3 rounded-full border-2 border-stone-600 bg-stone-900/80 backdrop-blur-sm transition-all ${activeIndex === 0 ? 'opacity-0 pointer-events-none' : 'hover:bg-amber-900/50 hover:border-amber-600 text-[#f4e4bc] scale-100 hover:scale-110 shadow-lg'}`}
                >
-                 <ChevronLeft className="w-6 h-6" />
+                 <ChevronLeft className="w-8 h-8" />
                </button>
-               
-               <div className="flex gap-2">
-                 {newsData.news.map((_, idx) => (
+            </div>
+
+            {/* 카드 영역 */}
+            <div className="flex-1 h-full w-full relative perspective-[1000px] max-w-2xl">
+              {renderCardContent()}
+              
+              {/* 인디케이터 (카드 하단에 위치) */}
+              <div className="flex justify-center gap-2 mt-4 absolute -bottom-8 left-0 right-0">
+                {newsData.news.map((_, idx) => (
                    <div 
                      key={idx} 
                      className={`w-2 h-2 rounded-full transition-all ${idx === activeIndex ? 'bg-amber-600 w-6' : 'bg-stone-700'}`}
@@ -261,23 +263,28 @@ const Week3: React.FC = () => {
                  <div 
                    className={`w-2 h-2 rounded-full transition-all ${activeIndex === newsData.news.length ? 'bg-amber-600 w-6' : 'bg-stone-700'}`} 
                  />
-               </div>
+              </div>
+            </div>
 
+            {/* 오른쪽 버튼 (카드 밖으로 이동) */}
+            <div className="shrink-0 z-20">
                <button 
                  onClick={nextCard} 
                  disabled={activeIndex === newsData.news.length}
-                 className={`p-3 rounded-full border border-stone-600 transition-all ${activeIndex === newsData.news.length ? 'opacity-30 cursor-not-allowed' : 'hover:bg-stone-800 text-[#f4e4bc]'}`}
+                 className={`p-3 rounded-full border-2 border-stone-600 bg-stone-900/80 backdrop-blur-sm transition-all ${activeIndex === newsData.news.length ? 'opacity-0 pointer-events-none' : 'hover:bg-amber-900/50 hover:border-amber-600 text-[#f4e4bc] scale-100 hover:scale-110 shadow-lg'}`}
                >
-                 <ChevronRight className="w-6 h-6" />
+                 <ChevronRight className="w-8 h-8" />
                </button>
             </div>
-
-            <button 
-              onClick={fetchNews} 
-              className="mt-6 text-xs text-stone-500 hover:text-amber-600 underline text-center"
-            >
-              새로운 뉴스 다시 검색하기
-            </button>
+            
+            <div className="absolute -bottom-16">
+              <button 
+                onClick={fetchNews} 
+                className="text-xs text-stone-500 hover:text-amber-600 underline text-center"
+              >
+                새로운 뉴스 다시 검색하기
+              </button>
+            </div>
           </div>
         )}
       </div>

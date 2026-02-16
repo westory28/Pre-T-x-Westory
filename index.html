@@ -10,6 +10,20 @@
       body {
         font-family: 'Nanum Myeongjo', serif;
       }
+      /* Custom Scrollbar for Webkit */
+      .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.1);
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #5d4037;
+          border-radius: 3px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #8d6e63;
+      }
     </style>
     <script>
       // Polyfill process safely for browser environment
@@ -32,8 +46,8 @@
     "lucide-react": "https://esm.sh/lucide-react@0.344.0?deps=react@18.3.1",
     "xlsx": "https://esm.sh/xlsx@0.18.5",
     "@google/genai": "https://esm.sh/@google/genai@0.1.0?bundle",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "@google/generative-ai": "https://esm.sh/@google/generative-ai@^0.24.1"
+    "@google/generative-ai": "https://esm.sh/@google/generative-ai@0.2.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
 }
 </script>
