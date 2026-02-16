@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Layout from '../components/Layout';
 import { Leaf, PenTool, MessageCircle, RefreshCw, Loader2, BookOpen, Send, AlertTriangle } from 'lucide-react';
-import { GoogleGenerativeAI } from "@google/genai";
+// [수정됨] 안정적인 라이브러리로 교체
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // ----------------------------------------------------------------------
 // 타입 정의
@@ -31,7 +32,7 @@ const Week4: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // ----------------------------------------------------------------------
-  // API 키 안전하게 가져오기 (Week 3와 동일한 안정성 확보)
+  // API 키 안전하게 가져오기
   // ----------------------------------------------------------------------
   const getApiKey = () => {
     if (import.meta.env?.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
@@ -43,7 +44,7 @@ const Week4: React.FC = () => {
   const initGenAI = () => {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("API Key가 없습니다. 환경 변수를 확인해주세요.");
-    return new GoogleGenerativeAI(apiKey); // @google/generative-ai 사용 (안정 버전)
+    return new GoogleGenerativeAI(apiKey);
   };
 
   // ----------------------------------------------------------------------
@@ -84,7 +85,13 @@ const Week4: React.FC = () => {
       const text = result.response.text();
       
       // JSON 파싱 (안전 장치)
-      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const firstBrace = cleanedText.indexOf('{');
+      const lastBrace = cleanedText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanedText = cleanedText.substring(firstBrace, lastBrace + 1);
+      }
+      
       const jsonData: HistoryCase = JSON.parse(cleanedText);
 
       setHistoryCase(jsonData);
@@ -140,7 +147,13 @@ const Week4: React.FC = () => {
       const text = result.response.text();
 
       // JSON 파싱
-      const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const firstBrace = cleanedText.indexOf('{');
+      const lastBrace = cleanedText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanedText = cleanedText.substring(firstBrace, lastBrace + 1);
+      }
+
       const jsonData: FeedbackData = JSON.parse(cleanedText);
 
       setFeedback(jsonData);
