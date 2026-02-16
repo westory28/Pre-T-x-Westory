@@ -229,7 +229,7 @@ const Week2: React.FC = () => {
         </div>
 
         {/* Main Content Area: The Classroom */}
-        <div className="flex-1 overflow-auto p-4 md:p-8 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] bg-stone-800 relative">
+        <div className="flex-1 overflow-auto p-4 md:p-8 bg-stone-900 relative">
           
           {/* Blackboard / Front */}
           <div className="max-w-4xl mx-auto mb-10 bg-[#2b3a28] border-8 border-[#3e2723] rounded-lg p-6 shadow-2xl relative">
