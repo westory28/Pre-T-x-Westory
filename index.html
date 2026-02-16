@@ -15,44 +15,29 @@
         margin: 0;
       }
 
-      /* 전체 브랜딩: 드래그 색상을 메인 로고(Amber) 색상으로 통일 */
       ::selection {
-        background-color: #d97706; /* amber-600 */
+        background-color: #d97706;
         color: #ffffff;
       }
 
-      /* 커스텀 스크롤바 */
-      .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(0, 0, 0, 0.2);
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #5d4037;
-          border-radius: 4px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #8d6e63;
-      }
+      .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: #5d4037; border-radius: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #8d6e63; }
 
-      /* 로딩/에러 메시지 스타일 */
+      /* 로딩 중 표시 */
       #root:empty::before {
         content: 'Loading Pre-T x Westory...';
         display: block;
         text-align: center;
         margin-top: 20%;
         color: #5d4037;
+        font-size: 1.2rem;
       }
     </style>
     
     <script>
-      // 환경 변수 에러 방지용 폴리필
-      window.process = window.process || { 
-        env: { 
-          NODE_ENV: 'development' 
-        } 
-      };
+      window.process = window.process || { env: { NODE_ENV: 'development' } };
     </script>
     
     <script type="importmap">
@@ -74,6 +59,6 @@
 <body>
     <div id="root"></div>
     
-    <script type="module" src="./src/main.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
